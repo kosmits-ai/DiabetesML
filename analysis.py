@@ -1,3 +1,4 @@
+#https://medium.com/@pythonshield/machine-learning-in-python-building-your-first-predictive-model-757a67cd5cd8
 
 import pandas as pd
 import numpy as np
@@ -6,7 +7,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 from sklearn.model_selection import train_test_split
-
+from imblearn.over_sampling import SMOTE
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import RFE
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 
 matplotlib.use('TkAgg')
 
@@ -85,4 +93,49 @@ plt.show()
 #Splitting the data
 x = data.drop('Outcome', axis=1)
 y = data['Outcome']
-x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2)
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2, random_state=42)
+
+
+smote = SMOTE(random_state=42)
+x_train_resampled, y_train_resampled = smote.fit_resample(x_train, y_train)
+
+print("\nClass distribution after SMOTE:")
+print(pd.Series(y_train_resampled).value_counts(normalize=True))
+
+scaler = StandardScaler()
+x_train_resampled = scaler.fit_transform(x_train_resampled)
+x_test = scaler.transform(x_test)
+
+x_train_df = pd.DataFrame(x_train_resampled, columns=x.columns)
+x_test_df = pd.DataFrame(x_test, columns=x.columns)
+
+x_train_df['Glucose_BMI'] = x_train_df['Glucose'] * x_train_df['BMI']
+x_test_df['Glucose_BMI'] = x_test_df['Glucose'] * x_test_df['BMI']
+
+
+model = LogisticRegression(max_iter=500, solver='lbfgs')
+rfe = RFE(estimator=model, n_features_to_select=5)
+rfe.fit(x_train_df, y_train_resampled)
+selected_features = x_train_df.columns[rfe.support_].tolist()
+print("Selected features:", selected_features)
+
+x_train_selected = rfe.transform(X_train_df)
+x_test_selected = rfe.transform(X_test_df)
+
+#Logistic Regression
+lr_model = LogisticRegression(max_iter=500, solver='lbfgs')
+lr_scores = cross_val_score(lr_model, x_train_selected, y_train_resampled, cv=5, scoring='roc_auc')
+print(f'Logistic Regression CV AUV:{lr_scores.mean():.2f} + {lr_scores.std():.2f}' )
+
+#Random Forest
+rf_model = RandomForestClassifier(random_state=42)
+rf_scores = cross_val_score(rf_model, x_train_selected, y_train_resampled, cv=5, scoring='roc_auc' )
+print(f'Random Forest CV AUC: {rf_scores.mean():.2f} ± {rf_scores.std():.2f}')
+
+# Support Vector Machine
+svm_model = SVC(probability=True)
+svm_scores = cross_val_score(svm_model, x_train_selected, y_train_resampled, cv=5, scoring='roc_auc')
+print(f'SVM CV AUC: {svm_scores.mean():.2f} ± {svm_scores.std():.2f}')
+
+
+rf_model.fit(x_train_selected, y_train_resampled)
