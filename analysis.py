@@ -1,3 +1,4 @@
+
 import pandas as pd
 import numpy as np
 import matplotlib
@@ -81,3 +82,7 @@ sns.pairplot(data, hue='Outcome', diag_kind='kde')
 plt.suptitle('Pair Plot of Features by Outcome', y=1.02)
 plt.show()
 
+#Splitting the data
+x = data.drop('Outcome', axis=1)
+y = data['Outcome']
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.2)
