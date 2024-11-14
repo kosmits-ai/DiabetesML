@@ -15,7 +15,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
-
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 matplotlib.use('TkAgg')
 
 
@@ -59,15 +59,18 @@ data[cols_with_zero] = data[cols_with_zero].fillna(data[cols_with_zero].median()
 # Verify missing values after imputation
 print(data.isnull().sum())
 
+#Box Plot   
 plt.figure(figsize=(12, 6))
 data.boxplot(column=cols_with_zero)
 plt.title('Box Plots for Numerical Features')
 plt.xticks(rotation=45)
 plt.show()
 
+#Numeric values except flag
 numeric_cols = data.select_dtypes(include=['float64', 'int64']).columns.tolist()
 numeric_cols.remove('Outcome')
 
+#histogram
 fig, axes = plt.subplots(2, 4, figsize=(20, 10))
 axes = axes.flatten()
 
@@ -119,8 +122,8 @@ rfe.fit(x_train_df, y_train_resampled)
 selected_features = x_train_df.columns[rfe.support_].tolist()
 print("Selected features:", selected_features)
 
-x_train_selected = rfe.transform(X_train_df)
-x_test_selected = rfe.transform(X_test_df)
+x_train_selected = rfe.transform(x_train_df)
+x_test_selected = rfe.transform(x_test_df)
 
 #Logistic Regression
 lr_model = LogisticRegression(max_iter=500, solver='lbfgs')
@@ -137,5 +140,18 @@ svm_model = SVC(probability=True)
 svm_scores = cross_val_score(svm_model, x_train_selected, y_train_resampled, cv=5, scoring='roc_auc')
 print(f'SVM CV AUC: {svm_scores.mean():.2f} ± {svm_scores.std():.2f}')
 
-
+#Predict with model
 rf_model.fit(x_train_selected, y_train_resampled)
+
+y_prediction = rf_model.predict(x_test_selected)
+
+accuracy = accuracy_score(y_test, y_prediction)
+print(f"Accuracy: {accuracy:.2f}")
+
+conf_matrix = confusion_matrix(y_test, y_prediction)
+print("Confusion matrix:")
+print(conf_matrix)
+
+class_report = classification_report(y_test, y_prediction)
+print("Classification Report:")
+print(class_report)
